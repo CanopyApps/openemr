@@ -7302,5 +7302,33 @@ return [
         $return = (new PrescriptionRestController())->getOne($uuid);
 
         return $return;
+    },
+
+    /**
+     * @OA\Post(
+     *     path="/api/canopyspeak/teachback/callback",
+     *     description="Webhook callback endpoint for CanopySpeak teachback workflow completion.",
+     *     tags={"standard"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="requestId", type="integer"),
+     *             @OA\Property(property="status", type="string"),
+     *             @OA\Property(property="resultSummary", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(response="200", description="Callback processed"),
+     *     @OA\Response(response="401", description="Invalid API key")
+     * )
+     */
+    "POST /api/canopyspeak/teachback/callback" => function (HttpRestRequest $request) {
+        // This endpoint uses API key auth instead of OAuth, so we skip the standard auth check.
+        // The controller validates the X-API-Key header against the configured canopyspeak_api_key.
+        $data = $request->getQueryParams();
+        if (empty($data)) {
+            $data = json_decode(file_get_contents('php://input'), true) ?? [];
+        }
+        $controller = new \OpenEMR\RestControllers\CanopySpeakTeachbackRestController();
+        return $controller->handleCallback($data);
     }
 ];

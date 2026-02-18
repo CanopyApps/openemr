@@ -270,6 +270,43 @@
     <span class="text-muted empty-state-text"></span>
 </template>
 
+<!-- Teachback Dialog Template -->
+<template id="teachback-dialog-template">
+    <div class="teachback-dialog p-3">
+        <div class="form-group">
+            <label class="font-weight-bold">{{ 'Teachback Mode'|xlt }}:</label>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="teachback_mode" id="teachback-mode-all" value="all" checked>
+                <label class="form-check-label" for="teachback-mode-all">{{ 'All (Codes + AI + Manual)'|xlt }}</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="teachback_mode" id="teachback-mode-codes" value="diagnosis_codes">
+                <label class="form-check-label" for="teachback-mode-codes">{{ 'Use Diagnosis Codes (ICD-10)'|xlt }}</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="teachback_mode" id="teachback-mode-ai" value="ai_analysis">
+                <label class="form-check-label" for="teachback-mode-ai">{{ 'AI Analysis of Clinical Notes'|xlt }}</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="teachback_mode" id="teachback-mode-manual" value="manual">
+                <label class="form-check-label" for="teachback-mode-manual">{{ 'Select Topic Manually'|xlt }}</label>
+            </div>
+        </div>
+        <div class="form-group" id="teachback-topic-group" style="display: none;">
+            <label for="teachback-topic">{{ 'Topic'|xlt }}:</label>
+            <input type="text" class="form-control" id="teachback-topic" placeholder="{{ 'Enter teachback topic...'|xla }}">
+        </div>
+        <div class="form-group">
+            <label>{{ 'Patient Language'|xlt }}:</label>
+            <span id="teachback-patient-language" class="text-muted"></span>
+        </div>
+        <div id="teachback-sending" class="text-center p-3 d-none">
+            <i class="fa fa-spinner fa-spin"></i> {{ 'Sending teachback request...'|xlt }}
+        </div>
+        <div id="teachback-error" class="alert alert-danger d-none"></div>
+    </div>
+</template>
+
 <style>
   .document-item, .result-item {
     transition: background-color 0.2s;
@@ -295,5 +332,22 @@
   .result-item.selected .badge {
     background-color: rgba(255, 255, 255, 0.2) !important;
     color: white !important;
+  }
+
+  .teachback-status.badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+  }
+  .teachback-status.badge-success {
+    background-color: #28a745;
+    color: #fff;
+  }
+  .teachback-status.badge-danger {
+    background-color: #dc3545;
+    color: #fff;
+  }
+  .teachback-status.badge-info {
+    background-color: #17a2b8;
+    color: #fff;
   }
 </style>

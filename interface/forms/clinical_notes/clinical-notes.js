@@ -22,6 +22,9 @@
     let defaultCategory = '';
     let patientUuid = ''; // Global patient UUID for API calls
     let csrfToken = ''; // Global CSRF token for API calls
+    let canopySpeakEnabled = false;
+    let patientLanguage = 'English';
+    let teachbackStatuses = {}; // Map of clinical_note_id -> status
 
     function duplicateRow(event) {
         event.preventDefault();
@@ -66,6 +69,10 @@
         changeIds('linked_results_data');
         changeIds('btn-add-documents');
         changeIds('btn-add-results');
+
+        // Teachback element IDs
+        changeIds('btn-teachback');
+        changeIds('teachback-status');
 
         $newRow.find('.hide-author').addClass('d-none')
         removeVal(newRow.id);
@@ -1096,15 +1103,199 @@
         }
     }
 
+    // ==============================================
+    // Teachback Functions
+    // ==============================================
+
+    function initTeachbackHandlers() {
+        if (!canopySpeakEnabled) {
+            return;
+        }
+
+        // Use event delegation for dynamically added elements
+        $(document).on('click', '.btn-teachback', function(e) {
+            e.preventDefault();
+            let noteIndex = $(this).data('note-index');
+            openTeachbackDialog(noteIndex);
+        });
+
+        // Show/hide manual topic input based on mode selection
+        $(document).on('change', 'input[name="teachback_mode"]', function() {
+            let topicGroup = document.getElementById('teachback-topic-group');
+            if (topicGroup) {
+                topicGroup.style.display = (this.value === 'manual') ? 'block' : 'none';
+            }
+        });
+
+        // Initialize status badges for existing teachback records
+        initTeachbackStatuses();
+    }
+
+    function initTeachbackStatuses() {
+        // teachbackStatuses is a map of clinical_note_id -> {status, ...}
+        for (let noteId in teachbackStatuses) {
+            if (teachbackStatuses.hasOwnProperty(noteId)) {
+                let record = teachbackStatuses[noteId];
+                // Find the note row that has this ID and update its status badge
+                let idInputs = document.querySelectorAll('input.id');
+                idInputs.forEach(function(input) {
+                    if (input.value == noteId) {
+                        let rowId = input.id.split('id_')[1];
+                        if (rowId) {
+                            updateTeachbackStatusUI(rowId, record.status);
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    function openTeachbackDialog(noteIndex) {
+        // Clone the teachback dialog template
+        let template = document.getElementById('teachback-dialog-template');
+        if (!template) {
+            console.error('Teachback dialog template not found');
+            return;
+        }
+        let dialogContent = template.content.cloneNode(true);
+
+        // Set the patient language
+        let langSpan = dialogContent.getElementById('teachback-patient-language');
+        if (langSpan) {
+            langSpan.textContent = patientLanguage || 'English';
+        }
+
+        dlgopen('', 'teachback-dialog', 'modal-md', 450, '',
+            jsText(xl('Send Teachback')), {
+                type: 'Alert',
+                html: dialogContent,
+                buttons: [
+                    {text: jsText(xl('Send Teachback')), id: 'send-teachback-btn', style: 'success'},
+                    {text: jsText(xl('Cancel')), close: true, style: 'secondary'}
+                ],
+                resolvePromiseOn: 'shown',
+                allowResize: false,
+                onClosed: false
+            }).then(function(dialog) {
+            setupTeachbackDialogEvents(dialog, noteIndex);
+        });
+    }
+
+    function setupTeachbackDialogEvents(dialog, noteIndex) {
+        $('#send-teachback-btn', dialog).on('click', function() {
+            let mode = $('input[name="teachback_mode"]:checked', dialog).val() || 'all';
+            let topic = '';
+            if (mode === 'manual') {
+                topic = $('#teachback-topic', dialog).val() || '';
+                if (!topic.trim()) {
+                    alert(jsText(xl('Please enter a topic for the teachback.')));
+                    return;
+                }
+            }
+            sendTeachback(noteIndex, mode, topic, dialog);
+        });
+    }
+
+    function sendTeachback(noteIndex, mode, topic, dialog) {
+        // Get the clinical note text and ID from the form
+        let descriptionEl = document.getElementById('description_' + noteIndex);
+        let noteIdEl = document.getElementById('id_' + noteIndex);
+        let clinicalNoteText = descriptionEl ? descriptionEl.value : '';
+        let clinicalNoteId = noteIdEl ? noteIdEl.value : '0';
+
+        // Show sending state
+        let sendingEl = dialog.querySelector ? dialog.querySelector('#teachback-sending') : document.getElementById('teachback-sending');
+        let errorEl = dialog.querySelector ? dialog.querySelector('#teachback-error') : document.getElementById('teachback-error');
+        let sendBtn = dialog.querySelector ? dialog.querySelector('#send-teachback-btn') : document.getElementById('send-teachback-btn');
+
+        if (sendingEl) sendingEl.classList.remove('d-none');
+        if (errorEl) errorEl.classList.add('d-none');
+        if (sendBtn) sendBtn.disabled = true;
+
+        let formData = new FormData();
+        formData.append('csrf_token', csrfToken);
+        formData.append('clinical_note_id', clinicalNoteId);
+        formData.append('clinical_note_text', clinicalNoteText);
+        formData.append('mode', mode);
+        formData.append('topic', topic);
+
+        fetch(top.webroot_url + '/interface/forms/clinical_notes/teachback_ajax.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (sendingEl) sendingEl.classList.add('d-none');
+            if (data.success) {
+                updateTeachbackStatusUI(noteIndex, 'sent');
+                dlgclose();
+                alert(jsText(xl('Teachback request sent successfully!')));
+            } else {
+                if (errorEl) {
+                    errorEl.textContent = data.error || jsText(xl('Failed to send teachback'));
+                    errorEl.classList.remove('d-none');
+                }
+                if (sendBtn) sendBtn.disabled = false;
+            }
+        })
+        .catch(function(error) {
+            if (sendingEl) sendingEl.classList.add('d-none');
+            if (errorEl) {
+                errorEl.textContent = jsText(xl('Network error. Please try again.'));
+                errorEl.classList.remove('d-none');
+            }
+            if (sendBtn) sendBtn.disabled = false;
+            console.error('Teachback error:', error);
+        });
+    }
+
+    function updateTeachbackStatusUI(noteIndex, status) {
+        let statusEl = document.getElementById('teachback-status_' + noteIndex);
+        if (!statusEl) {
+            return;
+        }
+
+        statusEl.classList.remove('d-none', 'badge-warning', 'badge-success', 'badge-danger', 'badge-info');
+
+        switch (status) {
+            case 'pending':
+            case 'sent':
+                statusEl.textContent = jsText(xl('Teachback Sent'));
+                statusEl.classList.add('badge-warning');
+                break;
+            case 'in_progress':
+                statusEl.textContent = jsText(xl('Teachback In Progress'));
+                statusEl.classList.add('badge-info');
+                break;
+            case 'completed':
+                statusEl.textContent = jsText(xl('Teachback Complete'));
+                statusEl.classList.add('badge-success');
+                break;
+            case 'failed':
+                statusEl.textContent = jsText(xl('Teachback Failed'));
+                statusEl.classList.add('badge-danger');
+                break;
+            default:
+                statusEl.classList.add('d-none');
+                return;
+        }
+    }
+
     function init(config) {
         codeArray = config.codeArray;
         defaultType = config.defaultType || '';
         defaultCategory = config.defaultCategory || '';
         patientUuid = config.patientUuid || '';
         csrfToken = config.csrfToken || '';
+        canopySpeakEnabled = config.canopySpeakEnabled || false;
+        patientLanguage = config.patientLanguage || 'English';
+        teachbackStatuses = config.teachbackStatuses || {};
 
         // Initialize linking event handlers
         initLinkingEventHandlers();
+
+        // Initialize teachback event handlers
+        initTeachbackHandlers();
 
         // Initialize other components if needed
         $(function () {

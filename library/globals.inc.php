@@ -3766,6 +3766,27 @@ $GLOBALS_METADATA = [
             '',
             xl('CCDA conformance and validation API service URL. For testing (using ONLY test data) you can default to http://ccda.healthit.gov which should not be used to transmit PHI. Production sites can deploy their own by following instructions here https://github.com/onc-healthit/reference-ccda-validator.')
         ],
+
+        'canopyspeak_enable' => [
+            xl('Enable CanopySpeak Teachback Integration'),
+            'bool',
+            '0',
+            xl('Enable the CanopySpeak Teachback integration to send patient education workflows from clinical notes.')
+        ],
+
+        'canopyspeak_api_url' => [
+            xl('CanopySpeak API URL'),
+            'text',
+            '',
+            xl('Base URL of the CanopySpeak server (e.g. https://canopyspeak.example.com).')
+        ],
+
+        'canopyspeak_api_key' => [
+            xl('CanopySpeak API Key'),
+            'encrypted',
+            '',
+            xl('API key for authenticating with the CanopySpeak server.')
+        ],
     ],
 
     'Rx' => [

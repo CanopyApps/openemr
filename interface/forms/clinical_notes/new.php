@@ -30,6 +30,7 @@ use OpenEMR\Common\Twig\TwigContainer;
 use OpenEMR\Core\Header;
 use OpenEMR\Core\OEGlobalsBag;
 use OpenEMR\Events\Core\TemplatePageEvent;
+use OpenEMR\Services\CanopySpeak\TeachbackService;
 use OpenEMR\Services\ClinicalNotesService;
 use OpenEMR\Services\ListService;
 use OpenEMR\Services\PatientService;
@@ -121,6 +122,12 @@ $viewArgs = [
     ,'defaultCategory' => $defaultCategory
     ,'csrfToken' => CsrfUtils::collectCsrfToken('api')
     ,'resultCategories' => $resultCategories ?? []
+    ,'canopyspeak_enabled' => (new TeachbackService())->isEnabled()
+    ,'teachback_statuses' => (new TeachbackService())->getTeachbacksForEncounter(
+        (int) $_SESSION['pid'],
+        (int) $_SESSION['encounter']
+    )
+    ,'patientLanguage' => sqlQuery("SELECT language FROM patient_data WHERE pid = ?", [$_SESSION['pid']])['language'] ?? 'English'
 ];
 $templatePageEvent = new TemplatePageEvent(
     'clinical_notes/new.php',

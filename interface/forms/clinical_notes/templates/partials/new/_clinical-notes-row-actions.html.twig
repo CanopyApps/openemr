@@ -6,5 +6,11 @@
     <button id="btn-delete_{{ index|attr }}" class="btn btn-danger btn-sm btn-delete" title='{{ 'Click here to delete the row'|xla }}'>
         {{ 'Delete'|xlt }}
     </button>
+    {% if canopyspeak_enabled is defined and canopyspeak_enabled %}
+    <button id="btn-teachback_{{ index|attr }}" type="button" class="btn btn-success btn-sm btn-teachback" data-note-index="{{ index|attr }}" title='{{ 'Send Teachback to patient mobile app'|xla }}'>
+        <i class="fa fa-graduation-cap"></i> {{ 'Teachback'|xlt }}
+    </button>
+    <span id="teachback-status_{{ index|attr }}" class="teachback-status badge ml-2 d-none" data-note-index="{{ index|attr }}"></span>
+    {% endif %}
     <input type="hidden" name="count[]" id="count_{{ index|attr }}" class="count" value="{{ index|attr }}" />
 </div>

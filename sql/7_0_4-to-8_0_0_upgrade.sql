@@ -149,3 +149,24 @@ VALUES ('DEM', 'pronoun', @group_id, 'Pronouns', @seq, 1, 1, 0, 0, 'pronoun', 1,
 #IfRow3D layout_options form_id DEM field_id sex_identified uor 2
 UPDATE `layout_options` SET `uor` = 1 WHERE `form_id` = 'DEM' AND `field_id` = 'sex_identified';
 #EndIf
+
+#IfNotTable canopyspeak_teachback
+CREATE TABLE `canopyspeak_teachback` (
+  `id` BIGINT(20) NOT NULL AUTO_INCREMENT,
+  `pid` BIGINT(20) NOT NULL COMMENT 'Patient ID',
+  `encounter` BIGINT(20) NOT NULL COMMENT 'Encounter ID',
+  `clinical_note_id` BIGINT(20) DEFAULT NULL COMMENT 'FK to form_clinical_notes.id',
+  `canopyspeak_request_id` BIGINT(20) DEFAULT NULL COMMENT 'ID returned from CanopySpeak',
+  `status` VARCHAR(50) NOT NULL DEFAULT 'pending' COMMENT 'pending|sent|in_progress|completed|failed',
+  `mode` VARCHAR(50) DEFAULT 'all' COMMENT 'diagnosis_codes|ai_analysis|manual|all',
+  `diagnosis_codes` TEXT DEFAULT NULL COMMENT 'JSON array of ICD-10 codes sent',
+  `topic` VARCHAR(255) DEFAULT NULL COMMENT 'Manual topic selection',
+  `result_summary` TEXT DEFAULT NULL COMMENT 'JSON results from CanopySpeak callback',
+  `initiated_by` VARCHAR(255) DEFAULT NULL COMMENT 'OpenEMR username who triggered',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `completed_at` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_pid_encounter` (`pid`, `encounter`),
+  KEY `idx_canopyspeak_request_id` (`canopyspeak_request_id`)
+) ENGINE=InnoDB;
+#EndIf

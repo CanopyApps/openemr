@@ -253,6 +253,36 @@ class TeachbackService
         return $codes;
     }
 
+    /**
+     * Look up a teachback record by the CanopySpeak PatientRequest ID.
+     *
+     * @param int $canopySpeakRequestId The CanopySpeak PatientRequest ID
+     * @return array|null The teachback record, or null if not found
+     */
+    public function getTeachbackByCanopySpeakRequestId(int $canopySpeakRequestId): ?array
+    {
+        $record = sqlQuery(
+            "SELECT * FROM `canopyspeak_teachback` WHERE `canopyspeak_request_id` = ?",
+            [$canopySpeakRequestId]
+        );
+        return $record ?: null;
+    }
+
+    /**
+     * Look up a teachback record by its primary key ID.
+     *
+     * @param int $id The teachback record primary key
+     * @return array|null The teachback record, or null if not found
+     */
+    public function getTeachbackById(int $id): ?array
+    {
+        $record = sqlQuery(
+            "SELECT * FROM `canopyspeak_teachback` WHERE `id` = ?",
+            [$id]
+        );
+        return $record ?: null;
+    }
+
     private function createTeachbackRecord(
         int $pid,
         int $encounter,
@@ -262,7 +292,7 @@ class TeachbackService
         string $topic,
         string $initiatedBy
     ): int {
-        sqlInsert(
+        return (int) sqlInsert(
             "INSERT INTO `canopyspeak_teachback` " .
             "(`pid`, `encounter`, `clinical_note_id`, `status`, `mode`, `diagnosis_codes`, `topic`, `initiated_by`) " .
             "VALUES (?, ?, ?, 'pending', ?, ?, ?, ?)",
@@ -276,7 +306,6 @@ class TeachbackService
                 $initiatedBy,
             ]
         );
-        return (int) sqlQuery("SELECT LAST_INSERT_ID() as id")['id'];
     }
 
     private function updateTeachbackRecord(int $id, array $updates): void

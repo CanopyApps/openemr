@@ -123,10 +123,27 @@ $viewArgs = [
     ,'csrfToken' => CsrfUtils::collectCsrfToken('api')
     ,'resultCategories' => $resultCategories ?? []
     ,'canopyspeak_enabled' => (new TeachbackService())->isEnabled()
-    ,'teachback_statuses' => (new TeachbackService())->getTeachbacksForEncounter(
-        (int) $_SESSION['pid'],
-        (int) $_SESSION['encounter']
-    )
+    ,'teachback_statuses' => (function () {
+        $rows = (new TeachbackService())->getTeachbacksForEncounter(
+            (int) $_SESSION['pid'],
+            (int) $_SESSION['encounter']
+        );
+        $byNoteId = [];
+        $latestForEncounter = null;
+        foreach ($rows as $row) {
+            if (!empty($row['clinical_note_id'])) {
+                $byNoteId[$row['clinical_note_id']] = $row;
+            }
+            // Track the most recent teachback for the encounter (first row, since ordered by created_at DESC)
+            if ($latestForEncounter === null) {
+                $latestForEncounter = $row;
+            }
+        }
+        return [
+            'byNoteId' => $byNoteId,
+            'latestForEncounter' => $latestForEncounter,
+        ];
+    })()
     ,'patientLanguage' => sqlQuery("SELECT language FROM patient_data WHERE pid = ?", [$_SESSION['pid']])['language'] ?? 'English'
 ];
 $templatePageEvent = new TemplatePageEvent(

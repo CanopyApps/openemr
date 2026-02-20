@@ -24,6 +24,7 @@ use OpenEMR\Core\OEGlobalsBag;
 use OpenEMR\Core\OEHttpKernel;
 use OpenEMR\Events\RestApiExtend\RestApiSecurityCheckEvent;
 use OpenEMR\FHIR\Config\ServerConfig;
+use OpenEMR\RestControllers\Authorization\ApiKeyAuthorizationStrategy;
 use OpenEMR\RestControllers\Authorization\BearerTokenAuthorizationStrategy;
 use OpenEMR\RestControllers\Authorization\IAuthorizationStrategy;
 use OpenEMR\RestControllers\Authorization\LocalApiAuthorizationController;
@@ -98,6 +99,14 @@ class AuthorizationListener implements EventSubscriberInterface
             $skipAuthorizationStrategy->addSkipRoute('/api/version');
             $skipAuthorizationStrategy->addSkipRoute('/api/product');
             $this->addAuthorizationStrategy($skipAuthorizationStrategy);
+
+            // API key authentication for external integrations (e.g., CanopySpeak)
+            $apiKeyAuthorizationStrategy = new ApiKeyAuthorizationStrategy();
+            $apiKeyAuthorizationStrategy->setSystemLogger($this->getLogger());
+            $apiKeyAuthorizationStrategy->addApiKeyRoute('/api/canopyspeak');
+            $apiKeyAuthorizationStrategy->addApiKeyRoute('/fhir/Task');
+            $this->addAuthorizationStrategy($apiKeyAuthorizationStrategy);
+
             // TODO: @adunsulag not sure I like instantiating the ServerConfig here, perhaps we need to do this in a different way?
             $serverConfig = new ServerConfig();
             $bearerTokenAuthorizationStrategy = new BearerTokenAuthorizationStrategy($this->getGlobalsBag(), EventAuditLogger::getInstance(), $this->getLogger());

@@ -46,6 +46,7 @@ use OpenEMR\RestControllers\FHIR\FhirPractitionerRestController;
 use OpenEMR\RestControllers\FHIR\FhirProcedureRestController;
 use OpenEMR\RestControllers\FHIR\FhirProvenanceRestController;
 use OpenEMR\RestControllers\FHIR\FhirServiceRequestRestController;
+use OpenEMR\RestControllers\FHIR\FhirTaskRestController;
 use OpenEMR\RestControllers\FHIR\FhirValueSetRestController;
 use OpenEMR\RestControllers\FHIR\FhirMetaDataRestController;
 use OpenEMR\RestControllers\FHIR\Operations\FhirOperationExportRestController;
@@ -7299,5 +7300,40 @@ return [
         $return = $fhirExportService->processDeleteExportForJob($job);
 
         return $return;
+    },
+
+    /**
+     *  @OA\Put(
+     *      path="/fhir/Task/{id}",
+     *      description="Updates a FHIR Task resource. Used by CanopySpeak for teachback status updates. Authenticated via X-API-Key header.",
+     *      tags={"fhir"},
+     *      @OA\Parameter(name="id", in="path", description="The CanopySpeak PatientRequest ID", required=true, @OA\Schema(type="string")),
+     *      @OA\RequestBody(required=true, @OA\MediaType(mediaType="application/fhir+json", @OA\Schema(type="object"))),
+     *      @OA\Response(response="200", description="Task updated successfully"),
+     *      @OA\Response(response="400", description="Invalid request"),
+     *      @OA\Response(response="401", description="Unauthorized - invalid API key"),
+     *      @OA\Response(response="404", description="Task not found")
+     *  )
+     */
+    "PUT /fhir/Task/:id" => function ($id, HttpRestRequest $request) {
+        // Auth handled by ApiKeyAuthorizationStrategy (X-API-Key header)
+        $data = (array) (json_decode(file_get_contents("php://input"), true));
+        return (new FhirTaskRestController())->put($id, $data);
+    },
+
+    /**
+     *  @OA\Get(
+     *      path="/fhir/Task/{id}",
+     *      description="Returns a single FHIR Task resource. Used by CanopySpeak to read teachback status. Authenticated via X-API-Key header.",
+     *      tags={"fhir"},
+     *      @OA\Parameter(name="id", in="path", description="The CanopySpeak PatientRequest ID", required=true, @OA\Schema(type="string")),
+     *      @OA\Response(response="200", description="Task resource returned"),
+     *      @OA\Response(response="401", description="Unauthorized - invalid API key"),
+     *      @OA\Response(response="404", description="Task not found")
+     *  )
+     */
+    "GET /fhir/Task/:id" => function ($id, HttpRestRequest $request) {
+        // Auth handled by ApiKeyAuthorizationStrategy (X-API-Key header)
+        return (new FhirTaskRestController())->getOne($id);
     },
 ];

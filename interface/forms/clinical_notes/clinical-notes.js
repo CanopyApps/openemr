@@ -71,6 +71,8 @@
         changeIds('btn-add-results');
 
         // Teachback element IDs
+        changeIds('teachback-section');
+        changeIds('teachback-status-container');
         changeIds('btn-teachback');
         changeIds('teachback-status');
 
@@ -1119,7 +1121,24 @@
             openTeachbackDialog(noteIndex);
         });
 
-        // Show/hide manual topic input based on mode selection
+        // Mode card selection in dialog
+        $(document).on('click', '.teachback-mode-card', function() {
+            // Toggle selected state
+            $('.teachback-mode-card').removeClass('selected');
+            $(this).addClass('selected');
+
+            // Check the hidden radio
+            $(this).find('input[type="radio"]').prop('checked', true);
+
+            // Show/hide manual topic input
+            let mode = $(this).data('mode');
+            let topicGroup = document.getElementById('teachback-topic-group');
+            if (topicGroup) {
+                topicGroup.style.display = (mode === 'manual') ? 'block' : 'none';
+            }
+        });
+
+        // Fallback: Show/hide manual topic input based on radio change
         $(document).on('change', 'input[name="teachback_mode"]', function() {
             let topicGroup = document.getElementById('teachback-topic-group');
             if (topicGroup) {
@@ -1127,26 +1146,58 @@
             }
         });
 
-        // Initialize status badges for existing teachback records
-        initTeachbackStatuses();
+        // Note: initTeachbackStatuses() is called from the jQuery DOM-ready handler
+        // in init() since it needs to query DOM elements (input.id, .teachback-status)
+        // that don't exist yet when this runs from the <head> block.
     }
 
     function initTeachbackStatuses() {
-        // teachbackStatuses is a map of clinical_note_id -> {status, ...}
-        for (let noteId in teachbackStatuses) {
-            if (teachbackStatuses.hasOwnProperty(noteId)) {
-                let record = teachbackStatuses[noteId];
-                // Find the note row that has this ID and update its status badge
-                let idInputs = document.querySelectorAll('input.id');
-                idInputs.forEach(function(input) {
-                    if (input.value == noteId) {
-                        let rowId = input.id.split('id_')[1];
-                        if (rowId) {
-                            updateTeachbackStatusUI(rowId, record.status);
-                        }
-                    }
-                });
+        // teachbackStatuses has:
+        //   byNoteId: map of clinical_note_id -> {status, result_summary, ...}
+        //   latestForEncounter: most recent teachback record for the encounter (or null)
+        let byNoteId = (teachbackStatuses && teachbackStatuses.byNoteId) || {};
+        let latestForEncounter = (teachbackStatuses && teachbackStatuses.latestForEncounter) || null;
+        let matchedRows = new Set();
+
+        // First pass: match by clinical_note_id
+        let idInputs = document.querySelectorAll('input.id');
+        idInputs.forEach(function(input) {
+            let noteId = input.value;
+            if (noteId && byNoteId[noteId]) {
+                let rowId = input.id.split('id_')[1];
+                if (rowId) {
+                    let displayText = extractCanopySpeakStatus(byNoteId[noteId]);
+                    updateTeachbackStatusUI(rowId, byNoteId[noteId].status, displayText);
+                    matchedRows.add(rowId);
+                }
             }
+        });
+
+        // Second pass: if there are teachbacks for this encounter but no note-level match,
+        // show the latest encounter-level teachback status on unmatched rows
+        if (latestForEncounter && matchedRows.size === 0) {
+            let displayText = extractCanopySpeakStatus(latestForEncounter);
+            let statusContainers = document.querySelectorAll('.teachback-status-container');
+            statusContainers.forEach(function(container) {
+                let rowId = container.id.split('teachback-status-container_')[1];
+                if (rowId && !matchedRows.has(rowId)) {
+                    updateTeachbackStatusUI(rowId, latestForEncounter.status, displayText);
+                }
+            });
+        }
+    }
+
+    function extractCanopySpeakStatus(teachbackRow) {
+        if (!teachbackRow || !teachbackRow.result_summary) {
+            return null;
+        }
+        try {
+            let summary = typeof teachbackRow.result_summary === 'string'
+                ? JSON.parse(teachbackRow.result_summary)
+                : teachbackRow.result_summary;
+            return summary.canopyspeak_status || null;
+        } catch (e) {
+            return null;
         }
     }
 
@@ -1249,35 +1300,61 @@
         });
     }
 
-    function updateTeachbackStatusUI(noteIndex, status) {
+    function updateTeachbackStatusUI(noteIndex, status, displayText) {
+        let containerEl = document.getElementById('teachback-status-container_' + noteIndex);
         let statusEl = document.getElementById('teachback-status_' + noteIndex);
+        let sendBtn = document.getElementById('btn-teachback_' + noteIndex);
+
         if (!statusEl) {
             return;
         }
 
-        statusEl.classList.remove('d-none', 'badge-warning', 'badge-success', 'badge-danger', 'badge-info');
-
+        // Determine icon and CSS class based on status
+        let icon = '';
+        let statusClass = '';
+        let label = '';
         switch (status) {
             case 'pending':
             case 'sent':
-                statusEl.textContent = jsText(xl('Teachback Sent'));
-                statusEl.classList.add('badge-warning');
+                icon = '<i class="fas fa-paper-plane mr-1"></i>';
+                statusClass = 'status-sent';
+                label = jsText(xl('Teachback: Sent'));
                 break;
             case 'in_progress':
-                statusEl.textContent = jsText(xl('Teachback In Progress'));
-                statusEl.classList.add('badge-info');
+                icon = '<i class="fas fa-sync fa-spin mr-1"></i>';
+                statusClass = 'status-in-progress';
+                label = jsText(xl('Teachback: In Progress'));
                 break;
             case 'completed':
-                statusEl.textContent = jsText(xl('Teachback Complete'));
-                statusEl.classList.add('badge-success');
+                icon = '<i class="fas fa-check-circle mr-1"></i>';
+                statusClass = 'status-completed';
+                label = jsText(xl('Teachback: Complete'));
                 break;
             case 'failed':
-                statusEl.textContent = jsText(xl('Teachback Failed'));
-                statusEl.classList.add('badge-danger');
+                icon = '<i class="fas fa-exclamation-triangle mr-1"></i>';
+                statusClass = 'status-failed';
+                label = jsText(xl('Teachback: Failed'));
                 break;
             default:
-                statusEl.classList.add('d-none');
+                // No teachback — hide container, show button
+                if (containerEl) containerEl.style.display = 'none';
+                if (sendBtn) sendBtn.style.display = '';
                 return;
+        }
+
+        // Show the status container and set its data-status for CSS styling
+        if (containerEl) {
+            containerEl.style.display = '';
+            containerEl.setAttribute('data-status', status);
+        }
+
+        // Build the badge with icon + text
+        statusEl.className = 'teachback-status ' + statusClass;
+        statusEl.innerHTML = icon + (displayText || label);
+
+        // Show/hide the send button: visible only when failed (retry) or no status
+        if (sendBtn) {
+            sendBtn.style.display = (status === 'failed') ? '' : 'none';
         }
     }
 
@@ -1291,13 +1368,13 @@
         patientLanguage = config.patientLanguage || 'English';
         teachbackStatuses = config.teachbackStatuses || {};
 
-        // Initialize linking event handlers
+        // Initialize linking event handlers (event delegation, safe before DOM ready)
         initLinkingEventHandlers();
 
-        // Initialize teachback event handlers
+        // Initialize teachback event handlers (event delegation, safe before DOM ready)
         initTeachbackHandlers();
 
-        // Initialize other components if needed
+        // Initialize other components when DOM is ready
         $(function () {
             // special case to deal with static and dynamic datepicker items
             $(document).on('mouseover', '.datepicker', function () {
@@ -1319,6 +1396,10 @@
             if (typeof config.alertMessage !== 'undefined' && config.alertMessage != '') {
                 alert(config.alertMessage);
             }
+
+            // Initialize teachback status badges (must run after DOM is ready
+            // since it queries input.id elements and .teachback-status badges)
+            initTeachbackStatuses();
         });
     }
     window.oeFormsClinicalNotes = {

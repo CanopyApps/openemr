@@ -428,34 +428,41 @@
     background-color: #fef2f2;
   }
 
-  /* Teachback status badge */
+  /* Teachback status badge container */
   .teachback-status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  /* Individual teachback badge */
+  .teachback-status-badge {
     display: inline-flex;
     align-items: center;
-    padding: 0.35rem 0.75rem;
+    padding: 0.25rem 0.6rem;
     border-radius: 50rem;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 500;
     line-height: 1.2;
   }
 
-  .teachback-status.status-sent,
-  .teachback-status.status-pending {
+  .teachback-status-badge.status-sent,
+  .teachback-status-badge.status-pending {
     background-color: #d1f5ea;
     color: #0d6e4e;
   }
 
-  .teachback-status.status-in-progress {
+  .teachback-status-badge.status-in-progress {
     background-color: #d1ecf5;
     color: #0c5460;
   }
 
-  .teachback-status.status-completed {
+  .teachback-status-badge.status-completed {
     background-color: #d4edda;
     color: #155724;
   }
 
-  .teachback-status.status-failed {
+  .teachback-status-badge.status-failed {
     background-color: #f8d7da;
     color: #721c24;
   }

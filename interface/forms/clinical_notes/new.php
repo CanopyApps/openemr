@@ -132,7 +132,7 @@ $viewArgs = [
         $latestForEncounter = null;
         foreach ($rows as $row) {
             if (!empty($row['clinical_note_id'])) {
-                $byNoteId[$row['clinical_note_id']] = $row;
+                $byNoteId[$row['clinical_note_id']][] = $row;
             }
             // Track the most recent teachback for the encounter (first row, since ordered by created_at DESC)
             if ($latestForEncounter === null) {

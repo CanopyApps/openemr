@@ -1,0 +1,7 @@
+services:
+  mysql:
+    volumes:
+    - ../library/sql-ssl-certs-keys/easy/ca.pem:/etc/ssl/ca.pem:ro
+    - ../library/sql-ssl-certs-keys/easy/server-cert.pem:/etc/ssl/server-cert.pem:ro
+    - ../library/sql-ssl-certs-keys/easy/server-key.pem:/etc/ssl/server-key.pem:ro
+    - ../../data/mysql-data:/var/lib/mysql

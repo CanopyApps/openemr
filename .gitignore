@@ -34,3 +34,6 @@ coverage/js-unit
 
 # phpstan
 tmp-phpstan/*
+
+# MIMIC-IV dataset
+/data/
